@@ -131,83 +131,89 @@ if __name__ == '__main__':
     args = parse_args()
     # Repeat for different random seeds
     for i in range(args.repeat):
-        # Load config file
-        cfg.merge_from_file(args.cfg_file)
-        cfg.merge_from_list(args.opts)
-        assert_cfg(cfg)
-
-        # over-ride data path and remark if required.
-        if args.override_data_dir is not None:
-            cfg.dataset.dir = args.override_data_dir
-        if args.override_remark is not None:
-            cfg.remark = args.override_remark
-
-        # Set Pytorch environment
-        torch.set_num_threads(cfg.num_threads)
-        out_dir_parent = cfg.out_dir
-        cfg.seed = i + 1
-        random.seed(cfg.seed)
-        np.random.seed(cfg.seed)
-        torch.manual_seed(cfg.seed)
-        update_out_dir(out_dir_parent, args.cfg_file)
-        dump_cfg(cfg)
-        setup_printing()
-        auto_select_device()
-
-        # Infer dataset format if required, retrieve the cfg setting associated
-        # with the particular dataset.
-        if cfg.dataset.format == 'infer':
-            if cfg.train.mode in ['baseline', 'baseline_v2', 'live_update_fixed_split']:
-                dataset_cfg_setup_fixed_split(cfg.dataset.name)
-            elif cfg.train.mode == 'live_update':
-                dataset_cfg_setup_live_update(cfg.dataset.name)
-            elif cfg.train.mode == 'live_update_baseline':
-                dataset_cfg_setup_live_update(cfg.dataset.name)
-
-        # Set learning environment
-        if cfg.dataset.premade_datasets in ['fresh', 'fresh_save_cache']:
-            datasets = create_dataset()
+        if args.single == 'si':
+            dataset_names = ['Syn_Sh']  # Dataset name for single instance
         else:
-            datasets = torch.load(os.path.join(cfg.dataset.dir,
-                                               cfg.dataset.premade_datasets))
+            dataset_names = ['email-Eu-core_setting1', 'email-Eu-core_setting2', 'email-Eu-core_setting3',
+                             'Amazon_setting1', 'Amazon_setting2', 'Amazon_setting3',
+                             'Youtube_setting1', 'Youtube_setting2', 'Youtube_setting3',
+                             'Syn_Const', 'Syn_Gro', 'Syn_Sh']  # Dataset names for multiple instances
+        for dataset_name in dataset_names:
+            # Load config
+            cfg.merge_from_file(args.cfg_file)
+            cfg.merge_from_list(args.opts)
+            assert_cfg(cfg)
+            print('# '*20)
+            print(f'Running {dataset_name}...')
+            cfg.remark = dataset_name
+            cfg.dataset.name = dataset_name
+            cfg.dataset.dir = f'../DynGEM_CTGCN/data/{dataset_name}/1.format'
+            # over-ride data path and remark if required.
+            if args.override_data_dir is not None:
+                cfg.dataset.dir = args.override_data_dir
+            if args.override_remark is not None:
+                cfg.remark = args.override_remark
 
-        # required by gconv-lstm-h
-        cfg.dataset.num_nodes = datasets[0][0].num_nodes
-        loaders = create_loader(datasets)
-        meters = create_logger(datasets, loaders)
+            # Set Pytorch environment
+            torch.set_num_threads(cfg.num_threads)
+            out_dir_parent = cfg.out_dir
+            cfg.seed = i + 1
+            random.seed(cfg.seed)
+            np.random.seed(cfg.seed)
+            torch.manual_seed(cfg.seed)
+            update_out_dir(out_dir_parent, args.cfg_file)
+            dump_cfg(cfg)
+            setup_printing()
+            auto_select_device()
 
-        model = create_model(datasets)
-        optimizer = create_optimizer(model.parameters())
-        scheduler = create_scheduler(optimizer)
-        # Print model info
-        logging.info(model)
-        logging.info(cfg)
-        cfg.params = params_count(model)
-        logging.info('Num parameters: {}'.format(cfg.params))
-        # Start training
-        for dataset, name in zip(datasets, ('train', 'validation', 'test')):
-            print(f'{name} set: {len(dataset)} graphs.')
-            all_edge_time = torch.cat([g.edge_time for g in dataset])
-            start = int(torch.min(all_edge_time))
-            start = datetime.fromtimestamp(start)
-            end = int(torch.max(all_edge_time))
-            end = datetime.fromtimestamp(end)
-            print(f'\tRange: {start} - {end}')
+            # Infer dataset format if required, retrieve the cfg setting associated
+            # with the particular dataset.
+            if cfg.dataset.format == 'infer':
+                if cfg.train.mode in ['baseline', 'baseline_v2', 'live_update_fixed_split']:
+                    dataset_cfg_setup_fixed_split(cfg.dataset.name)
+                elif cfg.train.mode == 'live_update':
+                    dataset_cfg_setup_live_update(cfg.dataset.name)
+                elif cfg.train.mode == 'live_update_baseline':
+                    dataset_cfg_setup_live_update(cfg.dataset.name)
 
-        if cfg.dataset.negative_sample_weight != 'uniform':
-            for dataset in datasets:
-                dataset.negative_sample_weight = cfg.dataset.negative_sample_weight
-        # breakpoint()
-        if cfg.train.mode == 'standard':
-            train(meters, loaders, model, optimizer, scheduler)
-        else:
-            train_dict[cfg.train.mode](
-                meters, loaders, model, optimizer, scheduler, datasets=datasets)
+            # Set learning environment
+            if cfg.dataset.premade_datasets in ['fresh', 'fresh_save_cache']:
+                datasets = create_dataset()
+            else:
+                datasets = torch.load(os.path.join(cfg.dataset.dir,
+                                                   cfg.dataset.premade_datasets))
 
-    if cfg.train.mode not in ['live_update', 'live_update_baseline', 'live_update_fixed_split']:
-        # Don't need to involve loggers in the live update scheme.
-        # Aggregate results from different seeds
-        agg_runs(get_parent_dir(out_dir_parent, args.cfg_file), cfg.metric_best)
-    # When being launched in batch mode, mark a yaml as done
-    if args.mark_done:
-        os.rename(args.cfg_file, '{}_done'.format(args.cfg_file))
+            # required by gconv-lstm-h
+            cfg.dataset.num_nodes = datasets[0][0].num_nodes
+            loaders = create_loader(datasets)
+            meters = create_logger(datasets, loaders)
+
+            model = create_model(datasets)
+            optimizer = create_optimizer(model.parameters())
+            scheduler = create_scheduler(optimizer)
+            # Print model info
+            logging.info(model)
+            logging.info(cfg)
+            cfg.params = params_count(model)
+            logging.info('Num parameters: {}'.format(cfg.params))
+            # Start training
+            for dataset, name in zip(datasets, ('train', 'validation', 'test')):
+                print(f'{name} set: {len(dataset)} graphs.')
+
+            if cfg.dataset.negative_sample_weight != 'uniform':
+                for dataset in datasets:
+                    dataset.negative_sample_weight = cfg.dataset.negative_sample_weight
+            # breakpoint()
+            if cfg.train.mode == 'standard':
+                train(meters, loaders, model, optimizer, scheduler)
+            else:
+                train_dict[cfg.train.mode](
+                    meters, loaders, model, optimizer, scheduler, datasets=datasets)
+
+        if cfg.train.mode not in ['live_update', 'live_update_baseline', 'live_update_fixed_split']:
+            # Don't need to involve loggers in the live update scheme.
+            # Aggregate results from different seeds
+            agg_runs(get_parent_dir(out_dir_parent, args.cfg_file), cfg.metric_best)
+        # When being launched in batch mode, mark a yaml as done
+        if args.mark_done:
+            os.rename(args.cfg_file, '{}_done'.format(args.cfg_file))

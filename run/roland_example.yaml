@@ -1,14 +1,13 @@
-remark: roland_example_run  # change this to determine where to store tensorboard files.
-out_dir: results
-device: auto
+remark: Amazon_setting1  # embeddings are saved in 'run/runs_<remark>' (important just when --single=True)
+out_dir: grid_search__moveavg_0_2
+device: auto  # {'cpu', 'gpu', 'auto'}
 experimental:
   rank_eval_multiplier: 100
 dataset:
-  format: infer  # main.py infers format from name, for cleaner grid file.
-  name: bitcoinotc.csv  # CONTROLLED_IN_GRID
+  format: timestep_dataset  # Set which dataloader to use
+  name: Amazon_setting1
   is_hetero: False
-  dir: /home/tianyudu/Data/roland_public_data
-  # premade_datasets: cached_zk_ready.pt  # only need for BSI large dataset.
+  dir: ../DynGEM_CTGCN/data/Amazon_setting1/1.format  # directory of the dataset
   task: link_pred
   shuffle: True
   negative_sample_weight: uniform
@@ -22,8 +21,8 @@ dataset:
   augment_label_dims: 0
   transform: none
   edge_encoder: True  # CONTROLLED_IN_GRID
-  edge_dim: 2  # CONTROLLED_IN_GRID, edge_dim in the raw dataset.
-  edge_encoder_name: roland
+  edge_dim: 1  # CONTROLLED_IN_GRID, edge_dim in the raw dataset.
+  edge_encoder_name: roland_general
   edge_encoder_bn: True
   node_encoder: True
   node_encoder_name: roland
@@ -71,3 +70,7 @@ optim:
   optimizer: adam
   base_lr: 0.03
   max_epoch: 100
+meta:
+  alpha: 0.9
+  is_meta: false
+  method: moving_average

@@ -21,6 +21,7 @@ from graphgym.utils.io import makedirs_rm_exist
 from graphgym.utils.stats import node_degree
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+import pandas as pd
 
 
 @torch.no_grad()
@@ -94,11 +95,16 @@ def get_task_batch(dataset: deepsnap.dataset.GraphDataset,
 
     Moreover, copy node-memories (node_states and node_cells) to the batch.
     """
-    assert today < tomorrow < len(dataset)
+    # assert today < tomorrow < len(dataset)
     # Get edges for message passing and prediction task.
     batch = dataset[today].clone()
-    batch.edge_label = dataset[tomorrow].edge_label.clone()
-    batch.edge_label_index = dataset[tomorrow].edge_label_index.clone()
+    if tomorrow < len(dataset):
+        batch.edge_label = dataset[tomorrow].edge_label.clone()
+        batch.edge_label_index = dataset[tomorrow].edge_label_index.clone()
+    else:
+        # No ground truth for the last task.
+        batch.edge_label = torch.zeros(batch.edge_label.size(0), dtype=batch.edge_label.dtype)
+        batch.edge_label_index = torch.zeros(2, batch.edge_label_index.size(1), dtype=batch.edge_label_index.dtype)
 
     # Copy previous memory to the batch.
     if prev_node_states is not None:
@@ -226,7 +232,7 @@ def train_live_update(loggers, loaders, model, optimizer, scheduler, datasets,
     t = datetime.datetime.now().strftime('%b%d_%H-%M-%S')
 
     # directory to store tensorboard files of this run.
-    out_dir = cfg.out_dir.replace('/', '\\')
+    out_dir = cfg.out_dir
     # dir to store all run outputs for the entire batch.
     run_dir = 'runs_' + cfg.remark
 
@@ -337,8 +343,24 @@ def train_live_update(loggers, loaders, model, optimizer, scheduler, datasets,
 
         prev_node_states = update_node_states(model, datasets[0], (t, t + 1),
                                               prev_node_states)
+        # Save prev_node_states as node embedding
+        node_embs = prev_node_states['node_states'][1].detach().cpu().numpy()
+        df_export = pd.DataFrame(data=node_embs, index=dataset[t]['node_list'])
+        embedding_path = f'./{run_dir}/{out_dir}/graph{t}.csv'
+        df_export.to_csv(embedding_path, sep='\t', header=True, index=True)
 
     writer.close()
+
+    t += 1
+
+    prev_node_states = update_node_states(model, datasets[0], (t, t + 1),
+                                          prev_node_states)
+
+    # Save final node embeddings.
+    node_embs = prev_node_states['node_states'][1].detach().cpu().numpy()
+    df_export = pd.DataFrame(data=node_embs, index=dataset[9]['node_list'])
+    embedding_path = f'./{run_dir}/{out_dir}/graph9.csv'
+    df_export.to_csv(embedding_path, sep='\t', header=True, index=True)
 
     if cfg.train.ckpt_clean:
         clean_ckpt()

@@ -52,6 +52,12 @@ def parse_args():
         default=None,
         nargs=argparse.REMAINDER
     )
+    parser.add_argument(
+        '--single',
+        help='If running on one dataset only',
+        default='no',
+        type=str
+    )
 
     if len(sys.argv) == 1:
         parser.print_help()
