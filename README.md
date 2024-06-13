@@ -1,5 +1,5 @@
 # ROLAND
-This repository contains the adaptation we made of ROLAND method from this [paper](https://arxiv.org/abs/2208.07239). This repository is strongly based on ROLAND's [repository](https://github.com/snap-stanford/roland), which is itself a version of a version of [GraphGym](https://github.com/snap-stanford/GraphGym) modified for the ROLAND paper to include their new model implementation.
+This repository contains the adaptation we made of ROLAND method from this [paper](https://arxiv.org/abs/2208.07239). This repository is strongly based on ROLAND's [repository](https://github.com/snap-stanford/roland), which is itself a version of [GraphGym](https://github.com/snap-stanford/GraphGym) modified for the ROLAND paper to include their new model implementation.
 
 ## Our Modifications
 We list here the main modifications we made to the original ROLAND repository:
