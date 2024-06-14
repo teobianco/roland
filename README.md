@@ -27,7 +27,7 @@ python main.py --cfg ./roland_example.yaml --repeat 1
 ```
 
 ## `yaml` Configuration File Description
-Here we provide an explanation of the yaml configuration file.
+Here we provide an explanation of the fields we have used/modified in the yaml configuration file.
 
 ```yaml
 remark: Youtube_setting1  # embeddings are saved in 'run/runs_<remark>' (important just when --single=True)
